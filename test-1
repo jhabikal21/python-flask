@@ -1,3 +1,228 @@
-secret
+Impact Analysis: Removing Azure APIM from Current Architecture
+Current Workflow
 
-test
+User → Cloudflare → Firewall → Azure APIM → AKS Internal LB (Ingress) → Istio Ingress → Pod
+
+What Happens If We Remove Azure APIM?
+New Workflow
+
+User → Cloudflare → Firewall → AKS Internal LB (Ingress) → Istio Ingress → Pod
+
+Context
+
+APIs are publicly exposed
+
+All traffic already enters through Cloudflare
+
+AKS uses Istio for internal traffic control
+
+APIM currently performs path rewriting
+
+Path Handling (Important Migration Consideration)
+Current Behavior via APIM
+
+Example:
+
+External URL:
+marketdata.xyz.com/md/health
+
+APIM:
+
+Exposes /md/* publicly
+
+Strips /md
+
+Forwards internally as:
+
+marketdata.xyz.com/health
+
+So APIM currently performs path-based abstraction and rewriting.
+
+Migration Plan (Without APIM)
+
+Before removing APIM:
+
+Configure Istio Ingress Gateway to accept the same public paths (/md/*)
+
+Implement path rewrite rules in Istio (or Cloudflare if preferred)
+
+Ensure backend services continue receiving:
+
+/health instead of /md/health
+
+This guarantees:
+
+No endpoint changes for external consumers
+
+No breaking changes
+
+Seamless transition
+
+Capability Comparison: APIM vs Cloudflare
+1️⃣ Edge Security & Protection
+Azure APIM
+
+Basic gateway protection
+
+Policy enforcement
+
+Cloudflare
+
+Advanced WAF
+
+L3–L7 DDoS protection
+
+Bot management
+
+API Shield
+
+mTLS
+
+Geo restrictions
+
+✅ Cloudflare provides stronger edge protection.
+
+2️⃣ Authentication & Authorization
+Azure APIM
+
+OAuth2 / OIDC validation
+
+JWT validation
+
+Subscription keys
+
+Per-consumer access control
+
+Cloudflare
+
+Cloudflare Access (OIDC, SAML, Azure AD)
+
+JWT validation (Workers)
+
+mTLS
+
+API Shield
+
+⚠️ Subscription key model is not native and would require custom logic.
+
+3️⃣ Rate Limiting & Throttling
+Azure APIM
+
+Per API
+
+Per consumer
+
+Quotas
+
+Cloudflare
+
+Route-based rate limiting
+
+Bot-based controls
+
+⚠️ Per-consumer quota enforcement requires custom implementation.
+
+4️⃣ Caching
+Azure APIM
+
+Regional response caching
+
+Cloudflare
+
+Global edge caching
+
+Tiered caching
+
+✅ Superior performance globally.
+
+5️⃣ API Lifecycle & Developer Experience
+Azure APIM
+
+Developer portal
+
+API publishing
+
+Version sets
+
+API products
+
+Subscription management
+
+Cloudflare
+
+No native developer portal
+
+No API product model
+
+No built-in lifecycle governance
+
+❌ Major governance gap for public APIs.
+
+Impact Analysis for Public APIs
+✅ What Remains Covered
+
+WAF & DDoS
+
+TLS termination
+
+Rate limiting (route-based)
+
+JWT validation
+
+Global caching
+
+Reverse proxy routing
+
+Path rewrite (via Istio / Cloudflare)
+
+⚠️ What Is Lost Without APIM
+
+Native subscription key management
+
+Built-in developer portal
+
+API product bundling
+
+Version governance tooling
+
+Per-consumer quotas
+
+Centralized Azure API governance
+
+Benefits of Removing APIM
+
+Reduced latency (one hop removed)
+
+Reduced Azure cost
+
+Simpler architecture
+
+Fewer moving parts
+
+Security remains enforced at Cloudflare edge
+
+Istio already provides internal traffic management
+
+Path rewrite can be replicated in Istio
+
+Risks
+
+Public API governance shifts away from Azure
+
+Consumer onboarding must be handled externally
+
+Subscription-based access control must move to:
+
+Application layer
+
+Cloudflare Workers
+
+Loss of built-in developer portal
+
+Executive Summary
+
+For security, routing, caching, and path management, Cloudflare + Istio fully replace APIM capabilities.
+
+For public API governance, subscription management, developer portal, and structured API lifecycle control, APIM still provides additional value.
+
+Removing APIM is technically feasible without breaking existing URLs (via Istio path alignment), but the decision should depend on how much you rely on API consumer governance versus pure edge security.
