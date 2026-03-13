@@ -98,3 +98,75 @@ you should also consider monitoring tools to observe replication status and trou
 evaluate network connectivity, permissions, firewall rules, SSL configurations, etc., before deploying in production. 
 before proceeding with any setup, ensure you have backups of your data. 
 you should also consider monitoring tools to observe replication status and troubleshoot issues promptly.
+
+
+
+# Option 3 – Cross-Tenant DR (Current Scenario)
+
+Since the DR environment exists in a different tenant, native Azure replication is not possible.
+
+## Possible Solutions
+
+### 1. PostgreSQL Logical Replication
+
+**Architecture:**
+
+```
+Primary PostgreSQL
+      │
+Logical Replication
+      │
+DR PostgreSQL
+```
+
+**Advantages:**
+- Works across tenants
+- Near real-time replication
+- Fully PostgreSQL native
+
+### 2. Azure Database Migration Service
+
+**Architecture:**
+
+```
+Primary PostgreSQL
+       │
+Azure Database Migration Service
+       │
+DR PostgreSQL
+```
+
+**Advantages:**
+- Continuous synchronization
+- Managed migration service
+
+**Limitations:**
+- Additional service cost
+- Operational complexity
+
+### 3. Backup and Restore Strategy
+
+**Architecture:**
+
+```
+Primary Database 
+      │ 
+Scheduled Backup 
+      │ 
+Azure Storage 
+      │ 
+Restore to DR Database 
+```
+**Limitations:**
+- Higher recovery point objective (RPO)
+- Not real-time replication 
+
+## Option 4 – Migration to VM-Based PostgreSQL (Alternative DR Architecture)
+If Azure platform limitations prevent desired DR architecture, the database can be migrated from Azure Flexible Server to PostgreSQL hosted on Azure Virtual Machines.
+This provides full control over replication configuration.
+
+### Architecture:
+* Primary PostgreSQL VM (UK South)
+* Streaming Replication f (UAE North)
+details of steps to migrate from Flexible Server to VM-based PostgreSQL:
+to be continued with detailed steps as provided.
