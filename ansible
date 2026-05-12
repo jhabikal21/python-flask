@@ -1,0 +1,448 @@
+Project Structure
+
+Create this structure:
+
+redis-infra/
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── provider.tf
+│   └── cloud-init.yaml
+│
+└── ansible/
+    ├── playbook.yml
+    └── templates/
+        └── docker-compose.yml.j2
+1. Terraform
+provider.tf
+terraform {
+  required_version = ">= 1.5"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 3.100"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+}
+2. variables.tf
+variables.tf
+variable "location" {
+  default = "Central India"
+}
+
+variable "resource_group_name" {
+  default = "redis-rg"
+}
+
+variable "vm_name" {
+  default = "redis-vm"
+}
+
+variable "admin_username" {
+  default = "azureuser"
+}
+
+variable "public_key_path" {
+  default = "~/.ssh/id_rsa.pub"
+}
+
+variable "github_repo" {
+  description = "Git repo URL for ansible pull"
+}
+
+variable "redis_password" {
+  sensitive = true
+}
+3. main.tf
+main.tf
+resource "azurerm_resource_group" "rg" {
+  name     = var.resource_group_name
+  location = var.location
+}
+
+# NETWORK
+
+resource "azurerm_virtual_network" "vnet" {
+  name                = "redis-vnet"
+  address_space       = ["10.10.0.0/16"]
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+resource "azurerm_subnet" "subnet" {
+  name                 = "redis-subnet"
+  resource_group_name  = azurerm_resource_group.rg.name
+  virtual_network_name = azurerm_virtual_network.vnet.name
+  address_prefixes     = ["10.10.1.0/24"]
+}
+
+# NSG
+
+resource "azurerm_network_security_group" "nsg" {
+  name                = "redis-nsg"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+}
+
+# SSH
+
+resource "azurerm_network_security_rule" "ssh" {
+  name                        = "allow-ssh"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+
+  source_port_range          = "*"
+  destination_port_range     = "22"
+
+  source_address_prefix      = "*"
+  destination_address_prefix = "*"
+
+  resource_group_name         = azurerm_resource_group.rg.name
+  network_security_group_name = azurerm_network_security_group.nsg.name
+}
+
+# REDIS INTERNAL ONLY
+
+resource "azurerm_network_security_rule" "redis" {
+  name                        = "allow-redis-private"
+  priority                    = 110
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+
+  source_port_range          = "*"
+  destination_port_ranges    = ["6379-6384"]
+
+  source_address_prefix      = "10.10.0.0/16"
+  destination_address_prefix = "*"
+
+  resource_group_name         = azurerm_resource_group.rg.name
+  network_security_group_name = azurerm_network_security_group.nsg.name
+}
+
+# NIC
+
+resource "azurerm_network_interface" "nic" {
+  name                = "redis-nic"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
+}
+
+resource "azurerm_network_interface_security_group_association" "assoc" {
+  network_interface_id      = azurerm_network_interface.nic.id
+  network_security_group_id = azurerm_network_security_group.nsg.id
+}
+
+# DATA DISK
+
+resource "azurerm_managed_disk" "redis_disk" {
+  name                 = "redis-data-disk"
+  location             = azurerm_resource_group.rg.location
+  resource_group_name  = azurerm_resource_group.rg.name
+
+  storage_account_type = "Premium_LRS"
+  create_option        = "Empty"
+
+  disk_size_gb = 64
+}
+
+# VM
+
+resource "azurerm_linux_virtual_machine" "vm" {
+  name                = var.vm_name
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  size = "Standard_B2s"
+
+  admin_username = var.admin_username
+
+  disable_password_authentication = true
+
+  network_interface_ids = [
+    azurerm_network_interface.nic.id
+  ]
+
+  admin_ssh_key {
+    username   = var.admin_username
+    public_key = file(var.public_key_path)
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
+  }
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Premium_LRS"
+  }
+
+  custom_data = base64encode(
+    templatefile("${path.module}/cloud-init.yaml", {
+      github_repo   = var.github_repo
+      redis_password = var.redis_password
+    })
+  )
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+
+resource "azurerm_virtual_machine_data_disk_attachment" "attach" {
+  managed_disk_id    = azurerm_managed_disk.redis_disk.id
+  virtual_machine_id = azurerm_linux_virtual_machine.vm.id
+
+  lun     = 10
+  caching = "ReadWrite"
+}
+4. cloud-init.yaml
+cloud-init.yaml
+#cloud-config
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - docker.io
+  - git
+  - ansible
+
+write_files:
+  - path: /opt/bootstrap.sh
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+
+      set -e
+
+      systemctl enable docker
+      systemctl start docker
+
+      usermod -aG docker azureuser
+
+      mkdir -p /redis-data
+
+      DEVICE=/dev/disk/azure/scsi1/lun10
+
+      if ! blkid $DEVICE; then
+        mkfs.ext4 $DEVICE
+      fi
+
+      mount $DEVICE /redis-data || true
+
+      grep -q "/redis-data" /etc/fstab || \
+      echo "$DEVICE /redis-data ext4 defaults,nofail 0 2" >> /etc/fstab
+
+      ansible-galaxy collection install community.docker
+
+      export REDIS_PASSWORD="${redis_password}"
+
+      ansible-pull \
+        -U ${github_repo} \
+        -C main \
+        -i localhost, \
+        /playbook.yml
+
+runcmd:
+  - bash /opt/bootstrap.sh
+5. Ansible Playbook
+ansible/playbook.yml
+---
+- hosts: localhost
+  connection: local
+  become: true
+
+  vars:
+
+    redis_password: "{{ lookup('env', 'REDIS_PASSWORD') }}"
+
+    redis_instances:
+      - name: redis7-1
+        image: redis:7.2.5
+        port: 6379
+
+      - name: redis7-2
+        image: redis:7.2.5
+        port: 6380
+
+      - name: redis6-1
+        image: redis:6.2.14
+        port: 6381
+
+      - name: redis6-2
+        image: redis:6.2.14
+        port: 6382
+
+      - name: redis6-3
+        image: redis:6.2.14
+        port: 6383
+
+      - name: redis6-4
+        image: redis:6.2.14
+        port: 6384
+
+  tasks:
+
+    - name: Create directories
+      file:
+        path: "/redis-data/{{ item.name }}"
+        state: directory
+        owner: "999"
+        group: "999"
+        mode: "0750"
+      loop: "{{ redis_instances }}"
+
+    - name: Create compose directory
+      file:
+        path: /opt/redis-stack
+        state: directory
+        mode: "0755"
+
+    - name: Generate docker compose
+      template:
+        src: templates/docker-compose.yml.j2
+        dest: /opt/redis-stack/docker-compose.yml
+
+    - name: Start containers
+      community.docker.docker_compose:
+        project_src: /opt/redis-stack
+        state: present
+6. Docker Compose Template
+ansible/templates/docker-compose.yml.j2
+version: '3.9'
+
+services:
+
+{% for redis in redis_instances %}
+  {{ redis.name }}:
+
+    image: {{ redis.image }}
+
+    container_name: {{ redis.name }}
+
+    restart: always
+
+    user: "999:999"
+
+    read_only: true
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    tmpfs:
+      - /tmp
+
+    ports:
+      - "{{ redis.port }}:6379"
+
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass {{ redis_password }}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+
+    volumes:
+      - /redis-data/{{ redis.name }}:/data
+
+{% endfor %}
+7. outputs.tf
+outputs.tf
+output "private_ip" {
+  value = azurerm_network_interface.nic.private_ip_address
+}
+8. Git Repo Setup
+
+Push ansible folder to GitHub:
+
+Example:
+
+https://github.com/company/redis-ansible.git
+
+Repo root should contain:
+
+playbook.yml
+templates/
+9. Deploy
+Initialize Terraform
+terraform init
+Apply
+terraform apply \
+  -var="github_repo=https://github.com/company/redis-ansible.git" \
+  -var="redis_password=StrongPassword123!"
+10. Verify
+
+SSH into VM:
+
+docker ps
+
+Expected:
+
+redis7-1
+redis7-2
+redis6-1
+redis6-2
+redis6-3
+redis6-4
+11. Test Redis
+redis-cli -a StrongPassword123! -p 6379 ping
+
+Expected:
+
+PONG
+12. Rebuild Test
+
+Destroy VM:
+
+terraform destroy
+
+Recreate:
+
+terraform apply
+
+Everything automatically comes back:
+
+disk
+redis
+docker
+ansible
+configuration
+persistence
+
+No manual work needed.
+
+Production Hardening Recommendations
+Strongly Recommended
+
+Add later:
+
+Feature	Recommendation
+Secrets	Microsoft
+Monitoring	Prometheus + Grafana
+Backup	Azure Disk Snapshots
+Logging	Docker log rotation
+TLS	Redis TLS
+Updates	Image auto-update pipeline
+HA	Redis Sentinel
+DR	Cross-region snapshots
