@@ -322,9 +322,10 @@ ansible/playbook.yml
   connection: local
   become: true
 
-  vars:
+  collections:
+    - community.docker
 
-    redis_password: "{{ lookup('env', 'REDIS_PASSWORD') }}"
+  vars:
 
     redis_instances:
       - name: redis7-1
@@ -353,7 +354,50 @@ ansible/playbook.yml
 
   tasks:
 
-    - name: Create directories
+    #################################################################
+    # PRECHECKS
+    #################################################################
+
+    - name: Ensure redis password provided
+      assert:
+        that:
+          - redis_password is defined
+          - redis_password | length >= 8
+        fail_msg: >
+          redis_password variable missing or too short
+
+    - name: Check docker installed
+      command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - debug:
+        var: docker_version.stdout
+
+    - name: Check docker compose installed
+      command: docker compose version
+      register: compose_version
+      changed_when: false
+
+    - debug:
+        var: compose_version.stdout
+
+    - name: Check docker service status
+      systemd:
+        name: docker
+      register: docker_service
+
+    - name: Ensure docker service running
+      assert:
+        that:
+          - docker_service.status.ActiveState == "active"
+        fail_msg: Docker service is not running
+
+    #################################################################
+    # STORAGE
+    #################################################################
+
+    - name: Create redis data directories
       file:
         path: "/redis-data/{{ item.name }}"
         state: directory
@@ -368,15 +412,103 @@ ansible/playbook.yml
         state: directory
         mode: "0755"
 
+    #################################################################
+    # TEMPLATE
+    #################################################################
+
     - name: Generate docker compose
       template:
         src: templates/docker-compose.yml.j2
         dest: /opt/redis-stack/docker-compose.yml
+        mode: "0644"
 
-    - name: Start containers
-      community.docker.docker_compose:
+    - name: Validate compose config
+      command: docker compose config
+      args:
+        chdir: /opt/redis-stack
+      register: compose_validate
+      changed_when: false
+
+    - debug:
+        var: compose_validate.stdout_lines
+
+    #################################################################
+    # DEPLOY
+    #################################################################
+
+    - name: Deploy redis stack
+      community.docker.docker_compose_v2:
         project_src: /opt/redis-stack
         state: present
+      register: compose_output
+
+    - debug:
+        var: compose_output
+
+    #################################################################
+    # VALIDATION
+    #################################################################
+
+    - name: Wait for redis ports
+      wait_for:
+        port: "{{ item.port }}"
+        timeout: 30
+      loop: "{{ redis_instances }}"
+
+    - name: Check container status
+      command: docker ps --format "{{ '{{' }}.Names{{ '}}' }} {{ '{{' }}.Status{{ '}}' }}"
+      register: docker_ps
+      changed_when: false
+
+    - debug:
+        var: docker_ps.stdout_lines
+
+    - name: Detect restarting containers
+      shell: |
+        docker ps \
+          --filter "status=restarting" \
+          --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: restarting_containers
+      changed_when: false
+
+    - name: Fail if restarting containers found
+      fail:
+        msg: >
+          Restarting containers detected:
+          {{ restarting_containers.stdout_lines }}
+      when: restarting_containers.stdout != ""
+
+    - name: Detect unhealthy containers
+      shell: |
+        docker ps \
+          --filter "health=unhealthy" \
+          --format "{{ '{{' }}.Names{{ '}}' }}"
+      register: unhealthy_containers
+      changed_when: false
+
+    - name: Fail if unhealthy containers found
+      fail:
+        msg: >
+          Unhealthy containers detected:
+          {{ unhealthy_containers.stdout_lines }}
+      when: unhealthy_containers.stdout != ""
+
+    #################################################################
+    # REDIS HEALTH
+    #################################################################
+
+    - name: Verify redis responds with PONG
+      shell: |
+        docker exec {{ item.name }} redis-cli \
+          -a '{{ redis_password }}' \
+          ping
+      register: redis_ping
+      changed_when: false
+      failed_when: "'PONG' not in redis_ping.stdout"
+      loop: "{{ redis_instances }}"
+
+    - debug:
+        var: redis_ping.results
 6. Docker Compose Template
 ansible/templates/docker-compose.yml.j2
 version: '3.9'
@@ -408,17 +540,49 @@ services:
     ports:
       - "{{ redis.port }}:6379"
 
-    command: >
-      redis-server
-      --appendonly yes
-      --requirepass {{ redis_password }}
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - "{{ redis_password }}"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - allkeys-lru
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-a",
+          "{{ redis_password }}",
+          "ping"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
     volumes:
       - /redis-data/{{ redis.name }}:/data
 
 {% endfor %}
+Run Locally
+ansible-playbook \
+  -i localhost, \
+  -c local \
+  playbook.yml \
+  --extra-vars "redis_password=testmetest" \
+  -vvvv
+Verify
+docker ps
+redis-cli -a testmetest -p 6379 ping
+
+Expected:
+
+PONG
+
 7. outputs.tf
 outputs.tf
 output "private_ip" {
