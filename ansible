@@ -221,9 +221,12 @@ package_update: true
 package_upgrade: true
 
 packages:
-  - docker.io
   - git
-  - ansible
+  - curl
+  - yum-utils
+  - device-mapper-persistent-data
+  - lvm2
+  - python3-pip
 
 write_files:
   - path: /opt/bootstrap.sh
@@ -231,27 +234,74 @@ write_files:
     content: |
       #!/bin/bash
 
-      set -e
+      set -euxo pipefail
+
+      #
+      # Install Docker CE
+      #
+
+      yum-config-manager \
+        --add-repo \
+        https://download.docker.com/linux/centos/docker-ce.repo
+
+      yum install -y \
+        docker-ce \
+        docker-ce-cli \
+        containerd.io \
+        docker-buildx-plugin \
+        docker-compose-plugin
+
+      #
+      # Start Docker
+      #
 
       systemctl enable docker
       systemctl start docker
 
-      usermod -aG docker azureuser
+      #
+      # Install Ansible
+      #
+
+      pip3 install --upgrade pip
+      pip3 install ansible
+
+      #
+      # Docker permissions
+      #
+
+      usermod -aG docker azureuser || true
+
+      #
+      # Redis persistent storage
+      #
 
       mkdir -p /redis-data
 
       DEVICE=/dev/disk/azure/scsi1/lun10
 
-      if ! blkid $DEVICE; then
-        mkfs.ext4 $DEVICE
+      if [ -b "$DEVICE" ]; then
+
+        if ! blkid $DEVICE; then
+          mkfs.ext4 -L redisdata $DEVICE
+        fi
+
+        mkdir -p /redis-data
+
+        mount $DEVICE /redis-data || true
+
+        grep -q redisdata /etc/fstab || \
+          echo "LABEL=redisdata /redis-data ext4 defaults,nofail 0 2" >> /etc/fstab
       fi
 
-      mount $DEVICE /redis-data || true
-
-      grep -q "/redis-data" /etc/fstab || \
-      echo "$DEVICE /redis-data ext4 defaults,nofail 0 2" >> /etc/fstab
+      #
+      # Install Ansible Docker collection
+      #
 
       ansible-galaxy collection install community.docker
+
+      #
+      # Run ansible pull
+      #
 
       export REDIS_PASSWORD="${redis_password}"
 
@@ -263,6 +313,8 @@ write_files:
 
 runcmd:
   - bash /opt/bootstrap.sh
+
+
 5. Ansible Playbook
 ansible/playbook.yml
 ---
