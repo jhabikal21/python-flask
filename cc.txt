@@ -1,0 +1,343 @@
+# Infrastructure and Operations Ownership Transition Program
+
+## 1. Purpose
+
+This document defines the plan, ownership model, milestones, and success criteria for transitioning all infrastructure, platform, security, release management, and operational responsibilities from the current managed services provider to internal teams.
+
+### Transition Objective
+
+By June 30, 2026:
+
+* Internal teams assume primary ownership of all infrastructure and operational processes.
+* Internal teams can independently support production environments.
+* Internal teams can independently perform deployments and releases.
+* Internal teams can independently manage security and compliance activities.
+* Vendor transitions to advisory and escalation support only.
+
+---
+
+# 2. Transition Timeline
+
+| Phase                  | Start Date | End Date     | Status  |
+| ---------------------- | ---------- | ------------ | ------- |
+| Discovery & Inventory  | June 1     | June 15      | Planned |
+| Knowledge Transfer     | June 10    | June 25      | Planned |
+| Ownership Validation   | June 20    | June 30      | Planned |
+| Vendor Standby Support | July 1     | September 30 | Planned |
+
+---
+
+# 3. Governance
+
+## Executive Sponsor
+
+**Owner:** TBD
+
+Responsibilities:
+
+* Executive decisions
+* Escalation management
+* Resource allocation
+
+---
+
+## Transition Lead
+
+**Owner:** TBD
+
+Responsibilities:
+
+* Overall program coordination
+* Risk management
+* KT tracking
+* Status reporting
+
+---
+
+## Workstream Owners
+
+| Workstream                       | Internal Owner |
+| -------------------------------- | -------------- |
+| AWS Platform & Accounts          | TBD            |
+| Networking                       | TBD            |
+| CI/CD & Release Management       | TBD            |
+| Artifactory & Package Management | TBD            |
+| Security Operations              | TBD            |
+| Monitoring & SRE                 | TBD            |
+| Documentation Management         | TBD            |
+
+---
+
+# 4. Scope
+
+## Included
+
+### Cloud Platform
+
+* AWS Organizations
+* AWS Accounts
+* IAM
+* EC2
+* Auto Scaling Groups
+* Launch Templates
+* Load Balancers
+* Route53
+* S3
+* RDS
+* VPC Infrastructure
+
+### DevOps
+
+* Source Control
+* CI/CD Pipelines
+* Build Systems
+* Release Management
+* Deployment Processes
+
+### Security
+
+* Vulnerability Management
+* AMI Management
+* Patch Management
+* Secrets Management
+* Security Monitoring
+
+### Operations
+
+* Monitoring
+* Alerting
+* Incident Management
+* Problem Management
+* Change Management
+* Disaster Recovery
+
+### Platform Services
+
+* Artifactory
+* Package Repositories
+* Container Registries
+
+---
+
+# 5. Workstream Deliverables
+
+## AWS Platform
+
+### Deliverables
+
+* AWS Organization documentation
+* AWS Account inventory
+* IAM documentation
+* Access ownership transfer
+* Billing ownership transfer
+* Terraform repositories
+* Infrastructure architecture diagrams
+
+### Exit Criteria
+
+* Internal team can independently manage AWS infrastructure.
+* Internal team owns all privileged access.
+
+---
+
+## Networking
+
+### Deliverables
+
+* Network architecture diagrams
+* VPC documentation
+* VPN documentation
+* DNS management procedures
+* Firewall and security group standards
+
+### Exit Criteria
+
+* Internal team can independently manage networking changes.
+
+---
+
+## CI/CD & Release Management
+
+### Deliverables
+
+* Repository inventory
+* Pipeline inventory
+* Deployment process documentation
+* Release process documentation
+* Rollback procedures
+
+### Exit Criteria
+
+* Internal team can independently deploy applications.
+
+---
+
+## Artifactory Management
+
+### Deliverables
+
+* Repository structure documentation
+* User and permissions model
+* Backup procedures
+* Cleanup procedures
+* Upgrade procedures
+
+### Exit Criteria
+
+* Internal team can independently manage Artifactory.
+
+---
+
+## Security Operations
+
+### Deliverables
+
+* Vulnerability management process
+* AMI build process
+* Patch management process
+* Secrets management process
+* Security incident process
+
+### Exit Criteria
+
+* Internal team can independently manage security operations.
+
+---
+
+## Monitoring & Operations
+
+### Deliverables
+
+* Monitoring architecture
+* Dashboard inventory
+* Alert inventory
+* Escalation matrix
+* Runbooks
+* Operational procedures
+
+### Exit Criteria
+
+* Internal team can independently support production environments.
+
+---
+
+# 6. Knowledge Transfer Plan
+
+## Required KT Sessions
+
+| Session | Topic                           | Owner  | Status  |
+| ------- | ------------------------------- | ------ | ------- |
+| KT-01   | AWS Account Structure           | Vendor | Pending |
+| KT-02   | Network Architecture            | Vendor | Pending |
+| KT-03   | Application Architecture        | Vendor | Pending |
+| KT-04   | CI/CD Pipelines                 | Vendor | Pending |
+| KT-05   | Release Process                 | Vendor | Pending |
+| KT-06   | Artifactory Administration      | Vendor | Pending |
+| KT-07   | AMI Creation & Maintenance      | Vendor | Pending |
+| KT-08   | Auto Scaling & Deployment Model | Vendor | Pending |
+| KT-09   | Monitoring & Alerting           | Vendor | Pending |
+| KT-10   | Incident Response Process       | Vendor | Pending |
+| KT-11   | Disaster Recovery Process       | Vendor | Pending |
+| KT-12   | Security Operations             | Vendor | Pending |
+
+---
+
+# 7. Transition Tracker
+
+| Component           | Vendor Owner | Internal Owner | Documentation Received | KT Completed | Reverse KT Completed | Risk |
+| ------------------- | ------------ | -------------- | ---------------------- | ------------ | -------------------- | ---- |
+| AWS Accounts        |              |                |                        |              |                      |      |
+| IAM                 |              |                |                        |              |                      |      |
+| Route53             |              |                |                        |              |                      |      |
+| VPCs                |              |                |                        |              |                      |      |
+| EC2                 |              |                |                        |              |                      |      |
+| Auto Scaling Groups |              |                |                        |              |                      |      |
+| Load Balancers      |              |                |                        |              |                      |      |
+| Artifactory         |              |                |                        |              |                      |      |
+| CI/CD Pipelines     |              |                |                        |              |                      |      |
+| Monitoring          |              |                |                        |              |                      |      |
+| Alerting            |              |                |                        |              |                      |      |
+| Security Operations |              |                |                        |              |                      |      |
+| AMI Process         |              |                |                        |              |                      |      |
+| Incident Management |              |                |                        |              |                      |      |
+
+---
+
+# 8. Access Transfer Checklist
+
+## AWS
+
+* [ ] Root account ownership
+* [ ] MFA ownership
+* [ ] Billing ownership
+* [ ] IAM administrator access
+* [ ] Service account inventory
+
+## Source Control
+
+* [ ] Repository ownership
+* [ ] Admin access transfer
+* [ ] Branch protection review
+
+## CI/CD
+
+* [ ] Pipeline ownership
+* [ ] Secret ownership
+* [ ] Deployment credentials
+
+## Artifactory
+
+* [ ] Administrator access
+* [ ] Repository ownership
+* [ ] Backup validation
+
+## Monitoring
+
+* [ ] Dashboard ownership
+* [ ] Alert ownership
+* [ ] Notification ownership
+
+---
+
+# 9. Risks and Issues Register
+
+| ID    | Risk                                 | Impact | Mitigation             | Owner | Status |
+| ----- | ------------------------------------ | ------ | ---------------------- | ----- | ------ |
+| R-001 | Missing documentation                | High   | Prioritize KT sessions | TBD   | Open   |
+| R-002 | Access ownership gaps                | High   | Complete access audit  | TBD   | Open   |
+| R-003 | Release process dependency on vendor | High   | Reverse KT validation  | TBD   | Open   |
+| R-004 | AMI process undocumented             | High   | Dedicated KT session   | TBD   | Open   |
+
+---
+
+# 10. July–September Support Model
+
+## Internal Team Responsibilities
+
+* Production support
+* Infrastructure changes
+* Releases
+* Security operations
+* Incident response
+
+## Vendor Responsibilities
+
+* Escalation support
+* Advisory support
+* Knowledge clarification
+* Transition gap assistance
+
+Vendor will not perform routine operational activities after June 30.
+
+---
+
+# 11. Success Criteria
+
+The transition will be considered successful when:
+
+* All critical documentation has been received.
+* All ownership transfers are completed.
+* Internal teams have completed reverse KT.
+* Internal teams independently perform operational activities.
+* Vendor support is limited to advisory assistance.
+* No critical production activities require vendor involvement.
