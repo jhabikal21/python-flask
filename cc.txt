@@ -341,3 +341,142 @@ The transition will be considered successful when:
 * Internal teams independently perform operational activities.
 * Vendor support is limited to advisory assistance.
 * No critical production activities require vendor involvement.
+
+
+
+
+Key Questions for Management
+1. Transition Scope
+Ownership
+Exactly what are we taking ownership of on June 30?
+What remains with the vendor during the 3-month support period?
+What remains permanently with the vendor (if anything)?
+What is considered "day 1 ownership" vs "later ownership"?
+
+2. Security Ownership
+
+This is probably the biggest area needing clarification.
+
+Questions
+Are we assuming ownership of security operations on June 30?
+If yes, who is the accountable team?
+Who will triage vulnerabilities?
+Who will own security findings?
+Who will approve risk acceptances?
+Who will own incident response?
+Who will manage IAM reviews?
+Who will manage patch compliance?
+Who will manage AMI hardening?
+Who will manage secrets rotation?
+Security Tooling
+What tools are currently used by the vendor?
+Are licenses transferable?
+Do we have budget for replacement tools?
+Are we expected to onboard our own tooling?
+
+Examples:
+
+Vulnerability scanning
+EDR
+CSPM
+Secrets scanning
+SIEM
+Log retention
+3. Operations Ownership
+Questions
+When does Ops become primary on-call?
+Who handles production incidents after June 30?
+Is there a formal on-call rotation?
+Who owns Sev1 incidents?
+Who owns change management?
+Who owns service availability?
+4. AWS Ownership
+Questions
+Who owns AWS account administration?
+Who owns root account access?
+Who owns IAM administration?
+Who owns AWS billing?
+Who owns Reserved Instances and Savings Plans?
+Who approves infrastructure changes?
+5. Infrastructure Ownership
+Questions
+Who owns EC2 infrastructure?
+Who owns Auto Scaling Groups?
+Who owns Load Balancers?
+Who owns Route53?
+Who owns SSL certificates?
+Who owns backups?
+Who owns disaster recovery?
+6. DevOps & Release Management
+
+Since Azure DevOps is already yours:
+
+Questions
+Are deployments currently triggered by the vendor or our team?
+Who owns production release approvals after June 30?
+Who owns rollback decisions?
+Who owns release scheduling?
+Do we have complete deployment documentation?
+7. Artifactory / Package Management
+
+You mentioned you have separate JFrog.
+
+Questions
+Are applications still dependent on vendor-managed Artifactory?
+Are artifacts being consumed from their repositories?
+Will artifacts need migration?
+Is there any dependency on vendor package repositories?
+What is the migration plan?
+8. Documentation Expectations
+Questions
+What documentation is mandatory before transition completion?
+Who reviews documentation quality?
+Who signs off KT completion?
+What happens if documentation is incomplete by June 30?
+9. Vendor Support Model (July–September)
+Questions
+What support hours are included?
+Business hours only or 24x7?
+What is the escalation process?
+Are there contractual SLAs?
+How quickly must the vendor respond?
+What activities are they still expected to perform?
+10. Knowledge Transfer
+Questions
+Who attends KT sessions?
+Are KT sessions recorded?
+Is reverse KT mandatory?
+Who signs off KT completion?
+What happens if a team is not ready by June 30?
+11. Staffing Readiness
+Questions
+Do we have enough resources to support production?
+Do we need additional hires?
+Do we need contractor support?
+Is an on-call rotation already defined?
+12. Disaster Recovery
+Questions
+Who owns DR after June 30?
+Has DR ever been tested?
+Are backups validated?
+What are RTO and RPO requirements?
+Who approves DR invocation?
+13. Risk & Escalation
+Questions
+What are the top transition risks?
+What risks are management willing to accept?
+What is the escalation path if we discover a major gap before June 30?
+Who has final go/no-go authority?
+Most Important Decision Questions
+
+If I were leading the meeting, I would insist on getting answers to these first:
+
+Who owns security operations starting July 1?
+Who owns production incidents starting July 1?
+Who owns AWS administration starting July 1?
+Who owns releases starting July 1?
+What activities are the vendor still allowed to perform after June 30?
+Who signs off that the transition is complete?
+What is the fallback plan if a workstream is not ready by June 30?
+
+These seven answers will define the rest of the transition plan and RACI matrix. Without them, the ownership model will remain ambiguous.
